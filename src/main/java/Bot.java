@@ -1,7 +1,11 @@
+import com.fasterxml.jackson.databind.introspect.TypeResolutionContext;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendAudio;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
@@ -9,6 +13,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class Bot extends TelegramLongPollingBot {
@@ -28,17 +33,49 @@ public class Bot extends TelegramLongPollingBot {
 	@Override
 	public void onUpdateReceived(Update update) {
 
-
-//		getAudioId(update);
-//		sendAudioThreeTimes(update, "CQACAgIAAxkBAAMJYxr2Tz08A6Aisy_TxXbjKjkYtX8AAlsiAALx89hIxdmFvSQ2XzgpBA", "My caption");
-		showKeyBoard(update);
-
+		Message message = update.getMessage();
+		if (!message.getText().isEmpty()) {
+			switch (message.getText()) {
+				case "/start":
+					sendMessage(update);
+					break;
+				case "/getAudioId":
+					getAudioId(update);
+					break;
+				case "/sendThreeAudio":
+					sendAudioThreeTimes(update, "CQACAgIAAxkBAAMJYxr2Tz08A6Aisy_TxXbjKjkYtX8AAlsiAALx89hIxdmFvSQ2XzgpBA", "My caption");
+					break;
+				case "/showKeyBoard":
+					showKeyBoard(update);
+					break;
+				case "getPhotoId":
+					getPhotoId(update);
+					break;
+				case "sendPhoto":
+					sendPhoto(update, "AgACAgIAAxkBAAM_Yxs8mMI8ylzNxzK8BuXr4ZSfDLUAAji-MRvx8-BIxZfDHES5ERkBAAMCAAN5AAMpBA", "My picture");
+			}
+		}
 	}
 
 	private void getAudioId(Update update) {
 		SendMessage sendMessage = new SendMessage();
 		sendMessage.setChatId(update.getMessage().getChatId());
 		id = update.getMessage().getAudio().getFileId();
+		sendMessage.setText(id);
+		try {
+			execute(sendMessage);
+		} catch (TelegramApiException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private void getPhotoId(Update update) {
+		SendMessage sendMessage = new SendMessage();
+		sendMessage.setChatId(update.getMessage().getChatId());
+		List<PhotoSize> photos = update.getMessage().getPhoto();
+		id = photos.stream()
+				.max(Comparator.comparing(PhotoSize::getFileSize))
+				.orElseThrow().getFileId();
 		sendMessage.setText(id);
 		try {
 			execute(sendMessage);
@@ -54,6 +91,18 @@ public class Bot extends TelegramLongPollingBot {
 		sendAudio.setCaption(caption);
 		try {
 			execute(sendAudio);
+		} catch (TelegramApiException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private void sendPhoto(Update update, String fileId, String caption) {
+		SendPhoto sendPhoto = new SendPhoto();
+		sendPhoto.setChatId(update.getMessage().getChatId());
+		sendPhoto.setPhoto(new InputFile(fileId));
+		sendPhoto.setCaption(caption);
+		try {
+			execute(sendPhoto);
 		} catch (TelegramApiException e) {
 			throw new RuntimeException(e);
 		}
@@ -78,7 +127,7 @@ public class Bot extends TelegramLongPollingBot {
 		SendMessage sendMessage = new SendMessage();
 		sendMessage.setChatId(update.getMessage().getChatId());
 		sendMessage.setText("Hello there, " + name);
-		sendMessage.setText(id);
+		sendMessage.setText("My commands: /start ; /getAudioId; /sendThreeAudio; /showKeyBoard, /getPhotoId, /sendPhoto");
 		try {
 			execute(sendMessage);
 		} catch (TelegramApiException e) {
